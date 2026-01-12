@@ -1,5 +1,5 @@
 <script>
-  import { Menu } from "@lucide/svelte";
+  import { Menu } from "@lucide/svelte"
   import { User } from "@lucide/svelte";
   import { Plus } from "@lucide/svelte";
   import { MessageSquareText } from "@lucide/svelte";
