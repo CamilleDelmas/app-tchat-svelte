@@ -19,11 +19,11 @@
     <nav class="menu">
       <div class="menu__add">
         <button><Plus size={42} /></button>
-        <label for="">Ajouter une discussion</label>
+        <input type="text" placeholder="Nouvelle discussion" />
       </div>
       <div class="menu__add">
         <MessageSquareText size={42} strokeWidth={1.5} />
-        <label for="">Discussions récentes</label>
+        <p>Discussions récentes</p>
       </div>
       <div class="menu__talk">
         <div class="talk">
@@ -107,9 +107,12 @@
     </div>
     <div class="hide"></div>
     <div class="reply">
-      <p>
-        Nam suscipit scelerisque imperdiet. Maecenas sit amet porttitor erat.
-      </p>
+      <textarea
+        aria-label="Question"
+        name="question"
+        id="question"
+        placeholder="Posez votre question..."
+      ></textarea>
       <button>Envoyer</button>
     </div>
   </main>
@@ -222,15 +225,53 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    gap: 1rem;
     width: 92%;
     left: 50%;
     position: fixed;
+    transform: translateX(-50%);
     bottom: 2rem;
     padding: 1rem;
-    background-color: var(--hilight-color);
-    transform: translateX(-50%);
     border-radius: 1rem;
     min-height: 9rem;
+    padding: 1.5rem;
+    color: #fff;
+    background-color: #77ba9886;
+    &::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: -1;
+      border-radius: 1rem;
+    }
+    textarea {
+      height: auto;
+      padding: 0.5rem;
+      border: none;
+      background-color: #00000000;
+      color: var(--neutral-color);
+      resize: none;
+      outline: none;
+      overflow: auto;
+      &::-webkit-scrollbar {
+        width: 3px;
+      }
+      &::-webkit-scrollbar-thumb {
+        background-color: #77ba99;
+      }
+      &::placeholder {
+        color: var(--neutral-color);
+      }
+      &:focus {
+        border-left: 1px solid var(--neutral-color);
+      }
+    }
+
     button {
       width: max-content;
       color: var(--dark-color);
@@ -305,36 +346,30 @@
       flex-direction: row;
       align-items: center;
       gap: 1rem;
-
     }
 
- /* Main */
+    /* Main */
 
-  main {
-    width: 60%;
-    margin: 2rem auto;
-  }
+    main {
+      width: 60%;
+      margin: 2rem auto;
+    }
 
-  .user-talk {
-    max-width: 80%;
-  }
+    .user-talk {
+      max-width: 80%;
+    }
 
+    .reply {
+      width: 100%;
+      left: 0;
+      position: sticky;
+      transform: translateX(0);
+    }
 
-  .reply {
-    width: 100%;
-    left: 0;
-    position: sticky;
-    transform: translateX(0);
-  }
-
-  .hide {
-    background-color: var(--main-color);
-    min-height: 0rem;
-  }
-
-
-
-
+    .hide {
+      background-color: var(--main-color);
+      min-height: 0rem;
+    }
   }
 
   /* Desktop Wide */
