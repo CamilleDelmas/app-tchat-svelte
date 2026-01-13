@@ -1,9 +1,46 @@
 <script>
-  import { Menu } from "@lucide/svelte"
+  import { MailMinus, Menu } from "@lucide/svelte";
   import { User } from "@lucide/svelte";
   import { Plus } from "@lucide/svelte";
   import { MessageSquareText } from "@lucide/svelte";
   import { Trash2 } from "@lucide/svelte";
+  import monToken from "../private/private";
+
+  // let active = false;
+  
+  let userTalk = $state("");
+  let savedUserTalk = $state("");
+  let robotTalk = $state("");
+
+  const initReply = async (event) => {
+    event.preventDefault();
+    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${monToken}`,
+      },
+      body: JSON.stringify({
+        model: "mistral-large-latest",
+        messages: [
+          {
+            content: `${userTalk}`,
+            role: "user",
+          },
+        ],
+      }),
+    });
+    const result = await response.json();
+    console.log(result);
+    robotTalk = result.choices.message;
+    (console.log(robotTalk));
+    savedUserTalk = userTalk;
+    userTalk = "";
+  };
+
+
+  
 </script>
 
 <div class="container">
@@ -12,27 +49,40 @@
       <h1>O'Chat</h1>
     </section>
     <section class="head-mobile">
-      <Menu size="42px" />
+      <!-- TODO: bug sur la version desktop pour l'affichage de la classe active. A revoir !!! -->
+      <!-- <button
+        id="burger-button"
+        class="burger"
+        onclick={() => (active = !active)}
+      > -->
+      <button id="burger-button" class="burger">
+        <Menu size="42px" />
+      </button>
       <h1>O'Chat</h1>
       <User size="42px" />
     </section>
+    <!-- <nav class="menu" class:active> -->
     <nav class="menu">
-      <div class="menu__add">
-        <button><Plus size={42} /></button>
-        <input type="text" placeholder="Nouvelle discussion" />
+      <div class="menu__add separate">
+        <button type="submit"><Plus size={42} /></button>
+        <input id="new-talk" type="text" placeholder="Nouvelle discussion" />
       </div>
       <div class="menu__add">
-        <MessageSquareText size={42} strokeWidth={1.5} />
+        <MessageSquareText size={38} strokeWidth={1.5} />
         <p>Discussions récentes</p>
       </div>
       <div class="menu__talk">
         <div class="talk">
           <p>Javascript</p>
-          <Trash2 size={24} strokeWidth={1.5} />
+          <button>
+            <Trash2 size={24} strokeWidth={1.5} />
+          </button>
         </div>
         <div class="talk">
           <p>Javascript</p>
-          <Trash2 size={24} strokeWidth={1.5} />
+          <button>
+            <Trash2 size={24} strokeWidth={1.5} />
+          </button>
         </div>
       </div>
     </nav>
@@ -43,7 +93,10 @@
   </header>
 
   <main>
-    <div class="robot-talk">
+    {#if savedUserTalk}
+    <div class="user-talk">{savedUserTalk}</div>
+    {/if}
+    <!-- <div class="robot-talk">
       <h2>Titre 2</h2>
       <p>
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque
@@ -104,17 +157,18 @@
       quis orci at sagittis. Etiam vitae posuere felis, sit amet egestas erat.
       Duis odio lacus, molestie id aliquam eget, sagittis id arcu. Nulla commodo
       odio sed mi porta laoreet. Suspendisse auctor varius sem sed commodo.
-    </div>
+    </div> -->
     <div class="hide"></div>
-    <div class="reply">
+    <form class="reply" onsubmit={initReply}>
       <textarea
         aria-label="Question"
         name="question"
         id="question"
         placeholder="Posez votre question..."
+        bind:value={userTalk}
       ></textarea>
       <button>Envoyer</button>
-    </div>
+    </form>
   </main>
 </div>
 
@@ -140,8 +194,15 @@
   .head-user {
     display: none;
   }
-
-  nav {
+  .burger {
+    background-color: var(--dark-color);
+    color: var(--neutral-color);
+  }
+  .active {
+    position: absolute;
+    top: -300px;
+  }
+  .menu {
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -151,6 +212,33 @@
       flex-direction: row;
       align-items: center;
       gap: 1rem;
+      input {
+        padding: 0.2rem;
+        width: 80%;
+        border: none;
+        background-color: var(--dark-color);
+        outline: none;
+        color: var(--neutral-color);
+        &::placeholder {
+          color: var(--hilight-color);
+        }
+        &:focus {
+          border-right: 1px solid var(--neutral-color);
+        }
+      }
+    }
+
+    .separate {
+      position: relative;
+      margin-block-end: 2rem;
+    }
+    .separate::after {
+      position: absolute;
+      bottom: -20px;
+      content: "";
+      height: 1px;
+      width: 100%;
+      background-color: var(--main-color);
     }
     .menu__talk {
       display: flex;
@@ -164,9 +252,9 @@
       align-items: center;
       gap: 1rem;
       p {
-        color: var(--dark-color);
+        color: var(--neutral-color-color);
         text-align: left;
-        background-color: var(--neutral-color);
+        background-color: var(--main-color);
         min-width: 10rem;
         padding: 0.3rem 1rem;
         border-radius: 1rem;
@@ -223,8 +311,8 @@
 
   .reply {
     display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+    flex-direction: row;
+    justify-content: flex-start;
     gap: 1rem;
     width: 92%;
     left: 50%;
@@ -250,6 +338,7 @@
       border-radius: 1rem;
     }
     textarea {
+      width: 100%;
       height: auto;
       padding: 0.5rem;
       border: none;
@@ -287,9 +376,18 @@
     min-height: 10rem;
   }
 
-  button {
+  .menu__add button {
     background-color: var(--hilight-color);
     border-radius: 50%;
+    border: none;
+    &:hover {
+      transform: scale(1.1);
+    }
+  }
+
+  .talk button {
+    color: var(--neutral-color);
+    background: none;
     border: none;
   }
 
@@ -310,15 +408,15 @@
 
   /* Desktop HD */
   @media (min-width: 1200px) {
-    /* Header */
-
     .container {
       width: 100%;
       height: 100%;
       display: flex;
       flex-direction: row;
-      gap: 2rem;
     }
+
+    /* Header */
+
     header {
       top: 30%;
       left: 0;
@@ -327,15 +425,19 @@
       height: 500px;
       padding: 1rem;
       background-color: var(--dark-color);
-      border-radius: 0 2rem 2rem 0;
+      border-radius: 0 1rem 1rem 0;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
     }
+
     .head-desktop {
+      h1 {
+        font-size: 52px;
+      }
       display: block;
       position: absolute;
-      top: -40px;
+      top: -50px;
     }
     .head-mobile {
       display: none;
@@ -354,9 +456,13 @@
       width: 60%;
       margin: 2rem auto;
     }
-
+    .robot-talk {
+      max-width: 90%;
+      margin-inline-start: 1rem;
+    }
     .user-talk {
       max-width: 80%;
+      margin-inline-end: 1rem;
     }
 
     .reply {
