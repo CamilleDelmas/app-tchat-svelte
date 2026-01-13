@@ -1,25 +1,53 @@
 <script>
+
+  // ========== IMPORTS ==========================================
   import { MailMinus, Menu } from "@lucide/svelte";
   import { User } from "@lucide/svelte";
   import { Plus } from "@lucide/svelte";
   import { MessageSquareText } from "@lucide/svelte";
   import { Trash2 } from "@lucide/svelte";
-  import monToken from "./private";
+  import Markdown from "svelte-exmarkdown";
 
   // let active = false;
-  
-  let userTalk = $state("");
-  let savedUserTalk = $state("");
-  let robotTalk = $state("");
 
-  const initReply = async (event) => {
+  // ========== VARIABLES ========================================
+  // Variable pour stocker la valeur de mon textarea
+  let userTalk = $state();
+  // Tableau qui stock tous les messages tapés dans la barre des questions
+  let savedTalk = $state([]);
+  // Variable pour stocker la réponse de l'IA
+  let robotTalk = $state({});
+  // Tableau qui stock tous les messages reçus de l'IA
+  let savedRobotTalk = $state([]);
+
+  // ========== TOKEN ============================================
+  let userToken = $state("");
+  // Fonction pour sauvegarder le token
+  const saveToken = (event) => {
     event.preventDefault();
+    // Stocke le token renseigné par l'utilisateur dans le localStorage
+    localStorage.setItem("token", `${userToken}`);
+    // Force le rafraichissement de la page pour revenir à la page sans modale
+    setTimeout(() => {
+      window.location.reload();
+    });
+  };
+  // Récupérer le token dans le localStorage
+  const myToken = localStorage.getItem("token");
+
+  // ========== API ==============================================
+  // Fonction appelée au submit du formulaire de question
+  const initReply = async (event) => {
+    // empêche le rafraichissement de la page
+    event.preventDefault();
+
+    // Envoi de la question à l'IA
     const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-        Authorization: `Bearer ${monToken}`,
+        Authorization: `Bearer ${myToken}`,
       },
       body: JSON.stringify({
         model: "mistral-large-latest",
@@ -31,16 +59,30 @@
         ],
       }),
     });
+    // récupère la réponse
     const result = await response.json();
     console.log(result);
-    robotTalk = result.choices.message;
-    (console.log(robotTalk));
-    savedUserTalk = userTalk;
+
+    // Stock la réponse de l'IA
+    robotTalk = {
+      role: result.choices[0].message.role,
+      message: result.choices[0].message.content,
+    };
+    // Créer une nouvelle réponse de l'utilisateur et récupère sa valeur
+    const userReply = {
+      role: "user",
+      message: userTalk,
+    };
+
+    // Ajoute les réponses au tableau
+    savedTalk.push(userReply);
+    savedTalk.push(robotTalk);
+
+    // Vide le textarea une fois la fonction appellée
     userTalk = "";
   };
 
-
-  
+  // localStorage.clear()
 </script>
 
 <div class="container">
@@ -91,88 +133,91 @@
       <p>Nom d'utilisateur</p>
     </section>
   </header>
-
-  <main>
-    {#if savedUserTalk}
-    <div class="user-talk">{savedUserTalk}</div>
-    {/if}
-    <!-- <div class="robot-talk">
-      <h2>Titre 2</h2>
-      <p>
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque
-        efficitur quis orci at sagittis. Etiam vitae posuere felis, sit amet
-        egestas erat. Duis odio lacus, <a href="#">molestie</a> id aliquam eget,
-        sagittis id arcu. Nulla commodo odio sed mi porta laoreet. Suspendisse auctor
-        varius sem sed commodo. Aliquam varius sapien ut tellus consectetur aliquet.
-      </p>
-      <h3>Titre 3</h3>
-      <p>
-        Nam suscipit scelerisque imperdiet. Maecenas sit amet porttitor erat.
-        Sed placerat sodales volutpat. Etiam suscipit lacinia mi, sed luctus
-        lorem semper vitae. Fusce leo lacus, molestie sit amet tincidunt sit
-        amet, commodo et orci. Mauris sapien urna, posuere pretium commodo ut,
-        lacinia ac odio. Cras leo mauris, imperdiet accumsan rutrum in, mattis
-        vitae nisl. Sed felis urna, lobortis a magna ut, condimentum bibendum
-        mauris. Etiam eu nisl tellus.
-      </p>
-      <ul>
-        <li>Test</li>
-        <li>Ici</li>
-        <li>Test</li>
-        <li>Ici</li>
-      </ul>
-      <p>
-        Curabitur fermentum sit amet est quis venenatis. Ut tortor purus,
-        iaculis porta diam nec, laoreet rutrum ex. Fusce quis lectus non velit
-        vehicula fermentum vitae ut libero. Pellentesque rutrum semper dolor, a
-        egestas nisi dictum id. Sed volutpat malesuada tortor, sit amet
-        pellentesque elit tempus a. Cras sed convallis ligula. Morbi ac
-        tristique velit. Donec a volutpat ligula. Sed ac augue semper, tincidunt
-        justo quis, tristique sapien. Suspendisse vel tempus ligula. Proin
-        ullamcorper dolor non suscipit consectetur. Nullam at fermentum ex, ac
-        congue turpis. Pellentesque finibus vehicula sem vel fringilla.
-      </p>
-    </div>
-    <div class="user-talk">
-      Ut eros odio, dapibus rutrum rutrum in, tempor at tortor. Pellentesque
-      mattis tristique augue, vel euismod augue efficitur at. Donec volutpat
-      accumsan pellentesque. Suspendisse nunc est, dapibus sit amet neque eget,
-      consequat malesuada <a href="#">libero</a>. Aenean at ultricies leo, non
-      fermentum nulla. Integer nec auctor est, eu pellentesque orci. Aenean
-      egestas a nulla vel egestas. Nam aliquam sapien eget aliquam commodo. Cras
-      id mauris sed metus laoreet euismod. Vivamus maximus lectus ac lectus
-      dapibus maximus. Suspendisse consequat molestie enim, et tincidunt velit
-      fermentum at. Quisque dolor quam, auctor eget erat ut, hendrerit imperdiet
-      dolor. Vivamus congue felis in nisl facilisis scelerisque. Aenean et
-      tellus urna. Proin quam orci, efficitur vitae risus nec, convallis
-      imperdiet lorem. Aenean mattis urna vitae nunc suscipit, eu malesuada eros
-      maximus. Donec tristique nibh a tellus hendrerit sagittis. Proin egestas
-      diam sed urna euismod sagittis. Nam quis arcu semper, porttitor diam a,
-      euismod sem.
-      <p class="user-talk__time">9:00</p>
-    </div>
-
-    <div class="robot-talk">
-      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque efficitur
-      quis orci at sagittis. Etiam vitae posuere felis, sit amet egestas erat.
-      Duis odio lacus, molestie id aliquam eget, sagittis id arcu. Nulla commodo
-      odio sed mi porta laoreet. Suspendisse auctor varius sem sed commodo.
-    </div> -->
-    <div class="hide"></div>
-    <form class="reply" onsubmit={initReply}>
-      <textarea
-        aria-label="Question"
-        name="question"
-        id="question"
-        placeholder="Posez votre question..."
-        bind:value={userTalk}
-      ></textarea>
-      <button>Envoyer</button>
-    </form>
-  </main>
+  {#if myToken !== null}
+    <main>
+      <div class="robot-talk">
+        <h2>Bienvenue sur O'Chat !</h2>
+        <p>
+          Posez vos questions et l'IA Mistral pourra vous répondre directement
+          ici !
+        </p>
+      </div>
+      <!-- TODO: réparer l'affichage -->
+      <!-- Problème d'affichage : les messages de l'utilisateur restent en haut, suivis par ceux de l'IA. Comportement attendu : un message de l'utilisateur puis un message de l'IA, etc. -->
+      {#if savedTalk.length > 0}
+        {#each savedTalk as talk}
+          {#if talk.role === "user"}
+            <div class="user-talk"><Markdown md={talk.message} /></div>
+          {:else}
+            <div class="robot-talk"><Markdown md={talk.message} /></div>
+          {/if}
+        {/each}
+      {/if}
+      <div class="hide"></div>
+      <form class="reply" onsubmit={initReply}>
+        <textarea
+          aria-label="Question"
+          name="question"
+          id="question"
+          placeholder="Posez votre question..."
+          bind:value={userTalk}
+        ></textarea>
+        <button>Envoyer</button>
+      </form>
+    </main>
+  {/if}
 </div>
+{#if !myToken}
+  <div class="modal">
+    <form onsubmit={saveToken}>
+      <label for="token">Veuillez renseigner votre clé API Mistral</label>
+      <input id="token" type="text" bind:value={userToken} />
+      <button type="submit">Valider</button>
+    </form>
+  </div>
+{/if}
 
 <style>
+  /* Modal */
+
+  .modal {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--main-color);
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    button {
+      width: max-content;
+      color: var(--dark-color);
+      background-color: var(--neutral-color);
+      padding: 0.3rem 1rem;
+      border-radius: 1rem;
+      align-self: flex-end;
+    }
+    input {
+      padding: 0.2rem;
+      width: 100%;
+      border: none;
+      background-color: var(--dark-color);
+      outline: none;
+      color: var(--neutral-color);
+      &::placeholder {
+        color: var(--hilight-color);
+      }
+      &:focus {
+        background-color: var(--hilight-color);
+      }
+    }
+  }
+
   /* Header */
 
   header {
@@ -265,6 +310,7 @@
   /* Main */
 
   main {
+    height: 100vh;
     width: 88%;
     margin: 2rem auto;
     display: flex;
@@ -373,7 +419,7 @@
 
   .hide {
     background-color: var(--main-color);
-    min-height: 10rem;
+    min-height: 12rem;
   }
 
   .menu__add button {
@@ -474,7 +520,7 @@
 
     .hide {
       background-color: var(--main-color);
-      min-height: 0rem;
+      min-height: 2rem;
     }
   }
 
