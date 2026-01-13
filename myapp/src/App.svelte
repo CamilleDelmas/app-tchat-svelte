@@ -4,7 +4,7 @@
   import { Plus } from "@lucide/svelte";
   import { MessageSquareText } from "@lucide/svelte";
   import { Trash2 } from "@lucide/svelte";
-  import monToken from "../private/private";
+  import monToken from "./private";
 
   // let active = false;
   
