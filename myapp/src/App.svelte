@@ -1,13 +1,11 @@
 <script>
-
   // ========== IMPORTS ==========================================
 
   import Markdown from "svelte-exmarkdown";
   import MobileNav from "./lib/MobileNav.svelte";
   import DesktopNav from "./lib/DesktopNav.svelte";
-  
-  // let active = false;
 
+  // let active = false;
 
   // ========== VARIABLES ========================================
   // Variable pour stocker la valeur de mon textarea
@@ -19,8 +17,7 @@
   // Tableau qui stock tous les messages reçus de l'IA
   let savedRobotTalk = $state([]);
 
-let innerWidth = $state(0); 
-
+  let innerWidth = $state(0);
 
   // ========== TOKEN ============================================
   let userToken = $state("");
@@ -86,13 +83,14 @@ let innerWidth = $state(0);
 
   // localStorage.clear()
 </script>
+
 <svelte:window bind:innerWidth />
 
 <div class="container">
   {#if innerWidth < 1200}
-  <MobileNav />
+    <MobileNav />
   {:else}
-  <DesktopNav />
+    <DesktopNav />
   {/if}
   {#if myToken !== null}
     <main>
@@ -185,6 +183,11 @@ let innerWidth = $state(0);
     margin: 2rem auto;
     display: flex;
     flex-direction: column;
+    overflow: auto;
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    /* border: 2px solid yellow; */
   }
 
   .robot-talk {
@@ -253,6 +256,16 @@ let innerWidth = $state(0);
       z-index: -1;
       border-radius: 1rem;
     }
+    &::after {
+      content: "";
+      position: absolute;
+      width: 100%;
+      height: 100px;
+      top: 9rem;
+      background-color: var(--main-color);
+      z-index:-2;
+      transform: scale(1.1);
+    }
     textarea {
       width: 100%;
       height: auto;
@@ -292,21 +305,6 @@ let innerWidth = $state(0);
     min-height: 12rem;
   }
 
-  .menu__add button {
-    background-color: var(--hilight-color);
-    border-radius: 50%;
-    border: none;
-    &:hover {
-      transform: scale(1.1);
-    }
-  }
-
-  .talk button {
-    color: var(--neutral-color);
-    background: none;
-    border: none;
-  }
-
   /* Large mobile */
   /* @media (min-width: 576px) {
 
@@ -322,18 +320,23 @@ let innerWidth = $state(0);
 
   } */
 
-    /* Main */
+  /* Main */
   @media (min-width: 1200px) {
     .container {
       width: 100%;
       height: 100%;
       display: flex;
       flex-direction: row;
-      border: 4px solid green;
+      /* border: 4px solid green; */
     }
     main {
       width: 60%;
-      margin: 2rem auto;
+      margin: 0 auto;
+      padding-block-start: 2rem;
+      overflow: auto;
+      &::-webkit-scrollbar {
+        display: none;
+      }
     }
     .robot-talk {
       max-width: 90%;
