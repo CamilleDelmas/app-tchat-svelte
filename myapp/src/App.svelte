@@ -5,8 +5,6 @@
   import MobileNav from "./lib/MobileNav.svelte";
   import DesktopNav from "./lib/DesktopNav.svelte";
 
-  // let active = false;
-
   // ========== VARIABLES ========================================
   // Variable pour stocker la valeur de mon textarea
   let userTalk = $state();
