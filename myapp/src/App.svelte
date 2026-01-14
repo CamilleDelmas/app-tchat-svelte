@@ -1,24 +1,37 @@
 <script>
   // ========== IMPORTS ==========================================
+  import { onMount } from "svelte";
 
   import Markdown from "svelte-exmarkdown";
   import MobileNav from "./lib/MobileNav.svelte";
   import DesktopNav from "./lib/DesktopNav.svelte";
 
   // ========== VARIABLES ========================================
+
   // Variable pour stocker la valeur de mon textarea
   let userTalk = $state();
-  // Tableau qui stock tous les messages tapés dans la barre des questions
-  let savedTalk = $state([]);
-  // Variable pour stocker la réponse de l'IA
-  let robotTalk = $state({});
-  // Tableau qui stock tous les messages reçus de l'IA
-  let savedRobotTalk = $state([]);
 
+  // Variable pour stocker la question de l'utilisateur
+  let userReply = $state({
+    content: "",
+    role: "",
+    created: null
+  });
+
+  // Variable pour stocker la réponse de l'IA
+  let robotReply = $state({});
+
+  // Tableau qui stock tous les messages
+  let savedTalk = $state([]);
+
+  // Variablepour connaitre la largeur de la fenêtre
   let innerWidth = $state(0);
 
   // ========== TOKEN ============================================
+
+  // Variable liée à la valeur de l'input
   let userToken = $state("");
+
   // Fonction pour sauvegarder le token
   const saveToken = (event) => {
     event.preventDefault();
@@ -29,58 +42,104 @@
       window.location.reload();
     });
   };
+
   // Récupérer le token dans le localStorage
   const myToken = localStorage.getItem("token");
 
+  // ========== POCKETBASE  =======================================
+  
+  // Fonction pour la création des données dans PocketBase
+    const createRecord = async (data) => {
+    const response = await fetch(
+      "http://localhost:8090/api/collections/messages/records",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }
+    );
+    return await response.json();
+  };
+
+  // Fonction pour récupérer les informations de la base de donnée et les stocker dans le tableau des conversations
+  const getMessages = async () => {
+    const response = await fetch(
+      "http://localhost:8090/api/collections/messages/records"
+    );
+    const data = await response.json();
+    savedTalk = data.items;
+  };
+
   // ========== API ==============================================
+  // TODO: ajouter l'heure dans le message
+
   // Fonction appelée au submit du formulaire de question
   const initReply = async (event) => {
     // empêche le rafraichissement de la page
     event.preventDefault();
     // Créer une nouvelle réponse de l'utilisateur et récupère sa valeur
-    const userReply = {
+    userReply = {
       role: "user",
-      message: userTalk,
+      content: userTalk.trim(),
+      created: new Date()
     };
-    // Ajoute la question au tableau
-    savedTalk.push(userReply);
-    // Envoi de la question à l'IA
-    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        Authorization: `Bearer ${myToken}`,
-      },
-      body: JSON.stringify({
-        model: "mistral-large-latest",
-        messages: [
-          {
-            content: `${userTalk}`,
-            role: "user",
+
+    if (userReply.content) {
+      // Ajoute la question au tableau pour qu'elle s'affiche directement dans le bloc de chat sans attendre la réponse du l'IA
+      savedTalk.push(userReply);
+
+      // Créer un enregistrement du message sur PocketBase avec le message de l'user
+      createRecord(userReply);
+
+      // Vide le textarea une fois la fonction appellée
+      userTalk = "";
+      // Envoi de la question à l'IA
+      const response = await fetch(
+        "https://api.mistral.ai/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${myToken}`,
           },
-        ],
-      }),
-    });
-    // récupère la réponse
-    const result = await response.json();
-    console.log(result);
+          body: JSON.stringify({
+            model: "mistral-small-latest",
+            messages: [
+              {
+                content: `${userReply.content}`,
+                role: `${userReply.role}`,
+              },
+            ],
+          }),
+        }
+      );
+      // récupère la réponse
+      const result = await response.json();
 
-    // Stock la réponse de l'IA
-    robotTalk = {
-      role: result.choices[0].message.role,
-      message: result.choices[0].message.content,
-    };
-    
+      // Stock la réponse de l'IA
+      robotReply = {
+        role: result.choices[0].message.role,
+        content: result.choices[0].message.content,
+      };
 
-    // Ajoute la réponse au tableau
-    savedTalk.push(robotTalk);
-
-    // Vide le textarea une fois la fonction appellée
-    userTalk = "";
+      // Ajoute la réponse au tableau
+      // savedTalk.push(robotReply);
+      createRecord(robotReply);
+      getMessages();
+    } else {
+      alert("Veuillez rentrer un message");
+    }
   };
 
+
   // localStorage.clear()
+
+  onMount(async () => {
+    await getMessages();
+  });
 </script>
 
 <svelte:window bind:innerWidth />
@@ -100,12 +159,16 @@
           ici !
         </p>
       </div>
-      {#if savedTalk.length > 0}
+      {#if savedTalk.length !== 0}
         {#each savedTalk as talk}
           {#if talk.role === "user"}
-            <div class="user-talk"><Markdown md={talk.message} /></div>
+            <div class="user-talk"><Markdown md={talk.content} /></div>
+            <div class="user-talk__time">{new Date(userReply.created).toLocaleTimeString("fr-FR", {
+                hour: "2-digit",
+                minute: "2-digit",
+            })}</div>
           {:else}
-            <div class="robot-talk"><Markdown md={talk.message} /></div>
+            <div class="robot-talk"><Markdown md={talk.content} /></div>
           {/if}
         {/each}
       {/if}
@@ -117,6 +180,7 @@
           id="question"
           placeholder="Posez votre question..."
           bind:value={userTalk}
+          required
         ></textarea>
         <button>Envoyer</button>
       </form>
@@ -127,7 +191,7 @@
   <div class="modal">
     <form onsubmit={saveToken}>
       <label for="token">Veuillez renseigner votre clé API Mistral</label>
-      <input id="token" type="text" bind:value={userToken} />
+      <input id="token" type="text" bind:value={userToken} required />
       <button type="submit">Valider</button>
     </form>
   </div>
@@ -194,7 +258,7 @@
   }
   .user-talk {
     max-width: 86%;
-    padding: 1.5rem;
+    padding: 1rem;
     margin-block-end: 1rem;
     background-color: var(--dark-color);
     align-self: flex-end;
@@ -260,9 +324,9 @@
       position: absolute;
       width: 100%;
       height: 100px;
-      top: 9rem;
+      top: 9.3rem;
       background-color: var(--main-color);
-      z-index:-2;
+      z-index: -2;
       transform: scale(1.1);
     }
     textarea {
