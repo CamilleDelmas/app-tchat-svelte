@@ -311,7 +311,8 @@
       font-weight: 700;
       color: var(--hilight-color);
     }
-    :global(ul), :global(ol) {
+    :global(ul),
+    :global(ol) {
       margin-block-end: 0.5rem;
       margin-inline-start: 2rem;
     }
@@ -332,7 +333,7 @@
     min-height: 9rem;
     padding: 1.5rem;
     color: #fff;
-    background-color: #77ba9886;
+    background-color: rgba(119, 186, 152, 0.6);
     &::before {
       content: "";
       position: absolute;
@@ -380,12 +381,34 @@
     }
 
     button {
+      position: relative;
       width: max-content;
       color: var(--dark-color);
       background-color: var(--neutral-color);
       padding: 0.3rem 1rem;
       border-radius: 1rem;
       align-self: flex-end;
+      &:active {
+        top:2px
+      }
+      &::after {
+        content: "";
+        font-size: 1rem;
+        position: absolute;
+        width: 0;
+        height: 0;
+        border-top: 15px solid transparent;
+        border-left: 20px solid var(--neutral-color);
+        border-bottom: 15px solid transparent;
+        top: 50%;
+        transform: translateY(-50%);
+        right: 0px;
+        transition: 300ms;
+        z-index: -1;
+      }
+      &:hover::after {
+        right: -7px;
+      }
     }
   }
 

@@ -2,8 +2,9 @@
   import { Menu } from "@lucide/svelte";
   import { User } from "@lucide/svelte";
   import Nav from "./Nav.svelte";
+  import { slide } from "svelte/transition";
 
-  let isOn = $state();
+  let visible = $state(false);
 
 </script>
 
@@ -12,14 +13,16 @@
       <h1>O'Chat</h1>
     </section>
     <section class="head-mobile">
-      <button id="burger-button" class="burger" onclick={() => isOn = !isOn}>
+      <button id="burger-button" class="burger" onclick={() => visible = !visible}>
         <Menu size="42px" />
       </button>
       <h1>O'Chat</h1>
       <User size="42px" />
     </section>
-    {#if isOn}
-    <Nav />
+    {#if visible}
+    <div transition:slide>
+      <Nav/>
+    </div>
     {/if}
     <section class="head-user">
       <User size="42px" />
