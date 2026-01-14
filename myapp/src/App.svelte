@@ -37,7 +37,13 @@
   const initReply = async (event) => {
     // empêche le rafraichissement de la page
     event.preventDefault();
-
+    // Créer une nouvelle réponse de l'utilisateur et récupère sa valeur
+    const userReply = {
+      role: "user",
+      message: userTalk,
+    };
+    // Ajoute la question au tableau
+    savedTalk.push(userReply);
     // Envoi de la question à l'IA
     const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
       method: "POST",
@@ -65,14 +71,9 @@
       role: result.choices[0].message.role,
       message: result.choices[0].message.content,
     };
-    // Créer une nouvelle réponse de l'utilisateur et récupère sa valeur
-    const userReply = {
-      role: "user",
-      message: userTalk,
-    };
+    
 
-    // Ajoute les réponses au tableau
-    savedTalk.push(userReply);
+    // Ajoute la réponse au tableau
     savedTalk.push(robotTalk);
 
     // Vide le textarea une fois la fonction appellée
