@@ -9,22 +9,24 @@
   // ========== VARIABLES ========================================
 
   // Variable pour stocker la valeur de mon textarea
-  let userTalk = $state();
+  let userTalk = $state("");
 
   // Variable pour stocker la question de l'utilisateur
   let userReply = $state({
     content: "",
     role: "",
-    created: null
   });
 
   // Variable pour stocker la réponse de l'IA
-  let robotReply = $state({});
+  let robotReply = $state({
+    content: "",
+    role: "",
+  });
 
   // Tableau qui stock tous les messages
   let savedTalk = $state([]);
 
-  // Variablepour connaitre la largeur de la fenêtre
+  // Variable pour connaitre la largeur de la fenêtre
   let innerWidth = $state(0);
 
   // ========== TOKEN ============================================
@@ -35,21 +37,23 @@
   // Fonction pour sauvegarder le token
   const saveToken = (event) => {
     event.preventDefault();
-    // Stocke le token renseigné par l'utilisateur dans le localStorage
-    localStorage.setItem("token", `${userToken}`);
-    // Force le rafraichissement de la page pour revenir à la page sans modale
-    setTimeout(() => {
-      window.location.reload();
-    });
+    try {
+      // Stocke le token renseigné par l'utilisateur dans le localStorage
+      localStorage.setItem("token", `${userToken}`);
+      myToken = userToken;
+    } catch (error) {
+      console.log("Erreur lors de la sauvegarde :", error);
+      alert("Impossible de sauvegarder les données");
+    }
   };
 
   // Récupérer le token dans le localStorage
-  const myToken = localStorage.getItem("token");
+  let myToken = $state(localStorage.getItem("token"));
 
   // ========== POCKETBASE  =======================================
-  
+
   // Fonction pour la création des données dans PocketBase
-    const createRecord = async (data) => {
+  const createRecord = async (data) => {
     const response = await fetch(
       "http://localhost:8090/api/collections/messages/records",
       {
@@ -70,10 +74,10 @@
     );
     const data = await response.json();
     savedTalk = data.items;
+    console.log(savedTalk);
   };
 
   // ========== API ==============================================
-  // TODO: ajouter l'heure dans le message
 
   // Fonction appelée au submit du formulaire de question
   const initReply = async (event) => {
@@ -83,57 +87,64 @@
     userReply = {
       role: "user",
       content: userTalk.trim(),
-      created: new Date()
     };
 
     if (userReply.content) {
-      // Ajoute la question au tableau pour qu'elle s'affiche directement dans le bloc de chat sans attendre la réponse du l'IA
-      savedTalk.push(userReply);
+      try {
+        // Spread Operator (l'opérateur de décomposition) pour mettre à jour le tableau et afficher directment la question à l'utilisateur (expliqué par l'IA).
+        savedTalk = [...savedTalk, userReply];
 
-      // Créer un enregistrement du message sur PocketBase avec le message de l'user
-      createRecord(userReply);
-
-      // Vide le textarea une fois la fonction appellée
-      userTalk = "";
-      // Envoi de la question à l'IA
-      const response = await fetch(
-        "https://api.mistral.ai/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            Authorization: `Bearer ${myToken}`,
-          },
-          body: JSON.stringify({
-            model: "mistral-small-latest",
-            messages: [
-              {
-                content: `${userReply.content}`,
-                role: `${userReply.role}`,
-              },
-            ],
-          }),
+        // on formate les messages à envoyer à Mistral comme l'api les attend
+        const formattedMessages = [];
+        for (const message of savedTalk) {
+          formattedMessages.push({
+            role: message.role,
+            content: message.content,
+          });
         }
-      );
-      // récupère la réponse
-      const result = await response.json();
+        // Créer un enregistrement du message sur PocketBase avec le message de l'user
+        createRecord(userReply);
 
-      // Stock la réponse de l'IA
-      robotReply = {
-        role: result.choices[0].message.role,
-        content: result.choices[0].message.content,
-      };
+        // Envoi de la question à l'IA
+        const response = await fetch(
+          "https://api.mistral.ai/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              Authorization: `Bearer ${myToken}`,
+            },
+            body: JSON.stringify({
+              model: "mistral-small-latest",
+              messages: formattedMessages,
+            }),
+          }
+        );
+        // récupère la réponse
+        const result = await response.json();
 
-      // Ajoute la réponse au tableau
-      // savedTalk.push(robotReply);
-      createRecord(robotReply);
-      getMessages();
+        // Stock la réponse de l'IA
+        robotReply = {
+          role: result.choices[0].message.role,
+          content: result.choices[0].message.content,
+        };
+
+        // Créer un enregistrement du message sur PocketBase avec le message de l'IA
+        createRecord(robotReply);
+        
+        getMessages();
+
+        // Vide le textarea une fois la fonction appellée
+        userTalk = "";
+      } catch (error) {
+        console.log("Message d'erreur", error);
+        alert("Impossible de communiquer");
+      }
     } else {
       alert("Veuillez rentrer un message");
     }
   };
-
 
   // localStorage.clear()
 
@@ -162,11 +173,15 @@
       {#if savedTalk.length !== 0}
         {#each savedTalk as talk}
           {#if talk.role === "user"}
-            <div class="user-talk"><Markdown md={talk.content} /></div>
-            <div class="user-talk__time">{new Date(userReply.created).toLocaleTimeString("fr-FR", {
-                hour: "2-digit",
-                minute: "2-digit",
-            })}</div>
+            <div class="user-talk">
+              <Markdown md={talk.content} />
+              <div class="user-talk__time">
+                {new Date(talk.created).toLocaleTimeString("fr-FR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </div>
+            </div>
           {:else}
             <div class="robot-talk"><Markdown md={talk.content} /></div>
           {/if}
@@ -257,24 +272,34 @@
     margin-block-end: 1rem;
   }
   .user-talk {
+    display: flex;
+    flex-direction: column;
+    min-width: 20%;
     max-width: 86%;
-    padding: 1rem;
+    padding: 1rem 1rem 0 1rem;
     margin-block-end: 1rem;
     background-color: var(--dark-color);
     align-self: flex-end;
     border-radius: 1rem;
-    .user-talk__time {
-      color: var(--neutral-color);
-      padding: 2rem 0 0 0;
-      text-align: right;
-    }
-    /* décoration avant l'heure du message */
-    /* .user-talk__time::before {
+  }
+
+  .user-talk__time {
+    position: relative;
+    font-size: 0.8rem;
+    color: var(--neutral-color);
+    background-color: var(--main-color);
+    margin-block-start: 0.5rem;
+    padding: 0.3rem 0 0.2rem 0.5rem;
+    align-self: flex-end;
+    border-radius: 1rem 0 0 0;
+    &::after {
       content: "";
+      position: absolute;
+      top: 0;
       width: 100%;
-      height: 1px;
-      color: var(--neutral-color);
-    } */
+      height: 100%;
+      background-color: var(--main-color);
+    }
   }
 
   .user-talk,
