@@ -2,6 +2,9 @@
   import { Menu } from "@lucide/svelte";
   import { User } from "@lucide/svelte";
   import Nav from "./Nav.svelte";
+
+  let isOn = $state();
+
 </script>
 
   <header id="mobile">
@@ -9,13 +12,15 @@
       <h1>O'Chat</h1>
     </section>
     <section class="head-mobile">
-      <button id="burger-button" class="burger">
+      <button id="burger-button" class="burger" onclick={() => isOn = !isOn}>
         <Menu size="42px" />
       </button>
       <h1>O'Chat</h1>
       <User size="42px" />
     </section>
+    {#if isOn}
     <Nav />
+    {/if}
     <section class="head-user">
       <User size="42px" />
       <p>Nom d'utilisateur</p>
