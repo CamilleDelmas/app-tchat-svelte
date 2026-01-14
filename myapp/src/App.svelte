@@ -132,7 +132,7 @@
 
         // Créer un enregistrement du message sur PocketBase avec le message de l'IA
         createRecord(robotReply);
-        
+
         getMessages();
 
         // Vide le textarea une fois la fonction appellée
@@ -156,7 +156,7 @@
 <svelte:window bind:innerWidth />
 
 <div class="container">
-  {#if innerWidth < 1200}
+  {#if innerWidth < 1100}
     <MobileNav />
   {:else}
     <DesktopNav />
@@ -304,14 +304,15 @@
 
   .user-talk,
   .robot-talk {
-    p {
-      margin-block: 1rem;
+    :global(p) {
+      margin-block-end: 0.5rem;
     }
-    a {
+    :global(a) {
       font-weight: 700;
       color: var(--hilight-color);
     }
-    ul {
+    :global(ul), :global(ol) {
+      margin-block-end: 0.5rem;
       margin-inline-start: 2rem;
     }
   }
@@ -339,8 +340,8 @@
       left: 0;
       right: 0;
       bottom: 0;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(7px);
+      -webkit-backdrop-filter: blur(7px);
       z-index: -1;
       border-radius: 1rem;
     }
@@ -393,23 +394,8 @@
     min-height: 12rem;
   }
 
-  /* Large mobile */
-  /* @media (min-width: 576px) {
-
-  } */
-
-  /* Tablettes */
-  /* @media (min-width: 768px) {
-
-  } */
-
-  /* Desktop */
-  /* @media (min-width: 992px) {
-
-  } */
-
   /* Main */
-  @media (min-width: 1200px) {
+  @media (min-width: 1100px) {
     .container {
       width: 100%;
       height: 100%;
@@ -446,9 +432,5 @@
       background-color: var(--main-color);
       min-height: 2rem;
     }
-  }
-  /* Desktop Wide */
-  @media (min-width: 1400px) {
-    /* ... */
   }
 </style>
