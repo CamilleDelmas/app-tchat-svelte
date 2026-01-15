@@ -1,4 +1,6 @@
 <script>
+  //TODO: probleme lorsque l'utilisateur de créé pas de conversation, prévoir le cas avec un message à l'utilisateur, ou attribuer automatiquement les messages à une nouvelle conv.
+
   // ========== IMPORTS ==========================================
   import { onMount } from "svelte";
 
@@ -6,6 +8,14 @@
   import MobileNav from "./lib/MobileNav.svelte";
   import DesktopNav from "./lib/DesktopNav.svelte";
 
+  // On importe l'état partagé
+  import { currentIdState } from "./lib/state.svelte";
+
+  $effect(() => {
+    if (currentIdState.value) {
+      getMessages(currentIdState.value)
+    }
+  })
   // ========== VARIABLES ========================================
 
   // Variable pour stocker la valeur de mon textarea
@@ -16,6 +26,7 @@
 
   // Variable pour connaitre la largeur de la fenêtre
   let innerWidth = $state(0);
+
 
   // ========== TOKEN ============================================
 
@@ -41,7 +52,7 @@
   // ========== POCKETBASE  =======================================
 
   // Fonction pour la création des données dans PocketBase
-  const createRecord = async (data) => {
+  const createMessage = async (data) => {
     const response = await fetch(
       "http://localhost:8090/api/collections/messages/records",
       {
@@ -56,9 +67,9 @@
   };
 
   // Fonction pour récupérer les informations de la base de donnée et les stocker dans le tableau des conversations
-  const getMessages = async () => {
+  const getMessages = async (id_conversation) => {
     const response = await fetch(
-      "http://localhost:8090/api/collections/messages/records"
+      `http://localhost:8090/api/collections/messages/records?filter=(conversation='${id_conversation}')`
     );
     const data = await response.json();
     savedTalk = data.items;
@@ -70,13 +81,13 @@
   const initReply = async (event) => {
     // empêche le rafraichissement de la page
     event.preventDefault();
-    // Créer une nouvelle réponse de l'utilisateur et récupère sa valeur
 
     // Variable pour stocker la question de l'utilisateur
     let userReply = $state({
       role: "user",
       content: userTalk.trim(),
       created: new Date(),
+      conversation: currentIdState.value,
     });
 
     if (userReply.content) {
@@ -95,7 +106,7 @@
         }
         console.log("création donnée question dans pocketbase");
         // Créer un enregistrement du message sur PocketBase avec le message de l'user
-        createRecord(userReply);
+        createMessage(userReply);
         console.log("Avant appel API Mistral");
         // Envoi de la question à l'IA
         const response = await fetch(
@@ -121,7 +132,8 @@
         // Variable pour stocker la réponse de l'IA
         let robotReply = $state({
           role: result.choices[0].message.role,
-          content: result.choices[0].message.content
+          content: result.choices[0].message.content,
+          conversation: currentIdState.value,
         });
 
         // Met à jour le tableau et afficher directment la réponse à l'utilisateur
@@ -129,7 +141,7 @@
 
         // Créer un enregistrement du message sur PocketBase avec le message de l'IA
         console.log("création reponse robot dans pocketbase");
-        await createRecord(robotReply);
+        await createMessage(robotReply);
 
         // Vide le textarea une fois la fonction appellée
         userTalk = "";
@@ -144,63 +156,72 @@
 
   // localStorage.clear()
 
-  // Appelle le tableau des messages depuis PocketBase à chaque réfraichissement de la page.
-  onMount(async () => {
-    await getMessages();
-  });
+  // // Appelle le tableau des messages depuis PocketBase à chaque réfraichissement de la page.
+  // onMount(async () => {
+  //   await getMessages(currentIdState.value);
+  // });
+
 </script>
 
 <svelte:window bind:innerWidth />
 
-<div class="container">
-  {#if innerWidth < 1100}
-    <MobileNav />
-  {:else}
-    <DesktopNav />
-  {/if}
-  {#if myToken !== null}
+{#if myToken !== null}
+  <div class="container">
+    {#if innerWidth < 1100}
+      <MobileNav />
+    {:else}
+      <DesktopNav />
+    {/if}
+
     <main>
-      <div class="robot-talk">
-        <h2>Bienvenue sur O'Chat !</h2>
-        <p>
-          Posez vos questions et l'IA Mistral pourra vous répondre directement
-          ici !
-        </p>
-      </div>
-      {#if savedTalk.length !== 0}
-        {#each savedTalk as talk}
-          {#if talk.role === "user"}
-            <div class="user-talk">
-              <Markdown
-                md={talk.content}
-              /><!--TODO: bug avec l'affichage de l'heure : lorsque le message s'affiche l'heure n'est pas dispo le temps que PocketBase soit contacté..-->
-              <div class="user-talk__time">
-                {new Date(talk.created).toLocaleTimeString("fr-FR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+      <!-- Si le currentId n'est pas renseigné (pas de clique sur une conversation), on affiche un message invitant à créer une nouvelle discussion. On n'affiche pas le champ de question, cela évite qu'un utilisateur saisisse une question sans être dans une conv -->
+      {#if currentIdState.value === ""}
+        <div class="robot-talk">
+          <h2>Bienvenue sur O'Chat !</h2>
+          <p>
+            Crééz une nouvelle discussion ou choisissez en une existante pour commencer à discuter avec l'IA
+            Mistral !
+          </p>
+        </div>
+        <!-- Si une conversation est bien sélectionnée, on affiche -->
+      {:else}
+        {#if savedTalk.length !== 0}
+          {#each savedTalk as talk}
+            {#if talk.role === "user"}
+              <div class="user-talk">
+                <Markdown md={talk.content} />
+                <div class="user-talk__time">
+                  {new Date(talk.created).toLocaleTimeString("fr-FR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </div>
               </div>
-            </div>
-          {:else}
-            <div class="robot-talk"><Markdown md={talk.content} /></div>
-          {/if}
-        {/each}
+            {:else}
+              <div class="robot-talk"><Markdown md={talk.content} /></div>
+            {/if}
+          {/each}
+        {:else}
+          <div class="robot-talk">
+            <h2>C'est le début d'une nouvelle discussion !</h2>
+          </div>
+        {/if}
+        <div class="hide"></div>
+        <form class="reply" onsubmit={initReply}>
+          <textarea
+            aria-label="Question"
+            name="question"
+            id="question"
+            placeholder="Posez votre question..."
+            bind:value={userTalk}
+            required
+          ></textarea>
+          <button>Envoyer</button>
+        </form>
       {/if}
-      <div class="hide"></div>
-      <form class="reply" onsubmit={initReply}>
-        <textarea
-          aria-label="Question"
-          name="question"
-          id="question"
-          placeholder="Posez votre question..."
-          bind:value={userTalk}
-          required
-        ></textarea>
-        <button>Envoyer</button>
-      </form>
     </main>
-  {/if}
-</div>
+  </div>
+{/if}
 {#if !myToken}
   <div class="modal">
     <form onsubmit={saveToken}>
@@ -264,7 +285,6 @@
     &::-webkit-scrollbar {
       display: none;
     }
-    /* border: 2px solid yellow; */
   }
 
   .robot-talk {
@@ -454,4 +474,5 @@
       min-height: 2rem;
     }
   }
+
 </style>

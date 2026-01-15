@@ -1,37 +1,95 @@
 <script>
+  import { onMount } from "svelte";
   import { Plus } from "@lucide/svelte";
   import { MessageSquareText } from "@lucide/svelte";
   import { Trash2 } from "@lucide/svelte";
+
+  // On importe l'état partagé
+  import { currentIdState } from "./state.svelte";
+
+  let userConversation = $state("");
+
+  let savedConv = $state([]);
+
+  // ========== POCKETBASE  =======================================
+
+  // Fonction pour la création des données dans PocketBase
+  const createRecordConv = async (data) => {
+    const response = await fetch(
+      "http://localhost:8090/api/collections/conversations/records",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }
+    );
+    return await response.json();
+  };
+
+    // Fonction pour récupérer les informations de la base de donnée et les stocker dans le tableau des conversations
+  const getConv = async () => {
+    const response = await fetch(
+      "http://localhost:8090/api/collections/conversations/records"
+    );
+    const data = await response.json();
+    savedConv = data.items;
+    console.log("au moment de récupérer les infos",savedConv);
+  };
+
+  // ========== FONCTION CONV  =======================================
+  // Fonction de création des conversation
+  const initConversation = async (event) => {
+    event.preventDefault();
+
+    userConversation = userConversation.trim();
+
+    const newConversation = {
+      title: userConversation
+    }
+    
+// console.log("tableau avant pocjetbase", savedConv);
+    createRecordConv(newConversation);
+    userConversation = "";
+  }
+    // Appelle le tableau des conversations depuis PocketBase à chaque réfraichissement de la page.
+  onMount(async () => {
+    await getConv();
+  });
+
 </script>
-
-
-  <nav class="menu">
-    <div class="menu__add separate">
+<!-- Partie nav -->
+<nav class="menu">
+  <div class="menu__add separate">
+    <form onsubmit={initConversation}>
       <button type="submit"><Plus size={42} /></button>
-      <input id="new-talk" type="text" placeholder="Nouvelle discussion" />
-    </div>
-    <div class="menu__add">
-      <MessageSquareText size={38} strokeWidth={1.5} />
-      <p>Discussions récentes</p>
-    </div>
-    <div class="menu__talk">
+      <input
+        id="new-talk"
+        type="text"
+        placeholder="Nouvelle discussion"
+        bind:value={userConversation}
+      />
+    </form>
+  </div>
+  <div class="menu__add">
+    <MessageSquareText size={38} strokeWidth={1.5} />
+    <p>Discussions récentes</p>
+  </div>
+  <div class="menu__talk">
+    {#each savedConv as conv}
       <div class="talk">
-        <p>Javascript</p>
+        <!-- Au click, on passe la valeur de l'id de la dscussion à l'état partagé -->
+        <button onclick={() => currentIdState.value = conv.id}>{conv.title}</button>
         <button>
           <Trash2 size={24} strokeWidth={1.5} />
         </button>
       </div>
-      <div class="talk">
-        <p>Javascript</p>
-        <button>
-          <Trash2 size={24} strokeWidth={1.5} />
-        </button>
-      </div>
-    </div>
-  </nav>
-
+    {/each}
+  </div>
+</nav>
+<!-- Fin de partie nav -->
 <style>
-
   .menu {
     display: flex;
     flex-direction: column;
