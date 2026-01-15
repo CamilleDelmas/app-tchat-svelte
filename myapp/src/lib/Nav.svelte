@@ -35,7 +35,6 @@
     );
     const data = await response.json();
     savedConv = data.items;
-    console.log("au moment de récupérer les infos",savedConv);
   };
 
   // ========== FONCTION CONV  =======================================
@@ -45,14 +44,20 @@
 
     userConversation = userConversation.trim();
 
-    const newConversation = {
+    let newConversation = {
       title: userConversation
     }
+    // Met à jour le tableau et afficher directment la réponse à l'utilisateur
+        savedConv = [...savedConv, newConversation];
     
-// console.log("tableau avant pocjetbase", savedConv);
     createRecordConv(newConversation);
     userConversation = "";
   }
+  $effect(() => {
+    if (savedConv) {
+      getConv()
+    }
+  })
     // Appelle le tableau des conversations depuis PocketBase à chaque réfraichissement de la page.
   onMount(async () => {
     await getConv();
@@ -69,6 +74,7 @@
         type="text"
         placeholder="Nouvelle discussion"
         bind:value={userConversation}
+        required
       />
     </form>
   </div>
@@ -79,7 +85,7 @@
   <div class="menu__talk">
     {#each savedConv as conv}
       <div class="talk">
-        <!-- Au click, on passe la valeur de l'id de la dscussion à l'état partagé -->
+        <!-- Au click, on passe la valeur de l'id de la dscussion à l'état -->
         <button onclick={() => currentIdState.value = conv.id}>{conv.title}</button>
         <button>
           <Trash2 size={24} strokeWidth={1.5} />

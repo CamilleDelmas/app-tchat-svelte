@@ -11,11 +11,6 @@
   // On importe l'état partagé
   import { currentIdState } from "./lib/state.svelte";
 
-  $effect(() => {
-    if (currentIdState.value) {
-      getMessages(currentIdState.value)
-    }
-  })
   // ========== VARIABLES ========================================
 
   // Variable pour stocker la valeur de mon textarea
@@ -153,6 +148,13 @@
       alert("Veuillez rentrer un message");
     }
   };
+
+  // A chaque changement de currentIdState.value, on appelle getMessages()
+  $effect(() => {
+    if (currentIdState.value) {
+      getMessages(currentIdState.value)
+    }
+  })
 
   // localStorage.clear()
 
