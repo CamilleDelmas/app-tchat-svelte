@@ -11,18 +11,6 @@
   // Variable pour stocker la valeur de mon textarea
   let userTalk = $state("");
 
-  // Variable pour stocker la question de l'utilisateur
-  let userReply = $state({
-    content: "",
-    role: "",
-  });
-
-  // Variable pour stocker la réponse de l'IA
-  let robotReply = $state({
-    content: "",
-    role: "",
-  });
-
   // Tableau qui stock tous les messages
   let savedTalk = $state([]);
 
@@ -74,7 +62,6 @@
     );
     const data = await response.json();
     savedTalk = data.items;
-    console.log(savedTalk);
   };
 
   // ========== API ==============================================
@@ -84,16 +71,20 @@
     // empêche le rafraichissement de la page
     event.preventDefault();
     // Créer une nouvelle réponse de l'utilisateur et récupère sa valeur
-    userReply = {
+
+    // Variable pour stocker la question de l'utilisateur
+    let userReply = $state({
       role: "user",
       content: userTalk.trim(),
-    };
+      created: new Date(),
+    });
 
     if (userReply.content) {
       try {
+        console.log($state.snapshot(savedTalk));
         // Spread Operator (l'opérateur de décomposition) pour mettre à jour le tableau et afficher directment la question à l'utilisateur (expliqué par l'IA).
         savedTalk = [...savedTalk, userReply];
-
+        console.log($state.snapshot(savedTalk));
         // on formate les messages à envoyer à Mistral comme l'api les attend
         const formattedMessages = [];
         for (const message of savedTalk) {
@@ -102,9 +93,10 @@
             content: message.content,
           });
         }
+        console.log("création donnée question dans pocketbase");
         // Créer un enregistrement du message sur PocketBase avec le message de l'user
         createRecord(userReply);
-
+        console.log("Avant appel API Mistral");
         // Envoi de la question à l'IA
         const response = await fetch(
           "https://api.mistral.ai/v1/chat/completions",
@@ -121,19 +113,23 @@
             }),
           }
         );
+        console.log("Après appel API Mistral", response);
         // récupère la réponse
         const result = await response.json();
-
         // Stock la réponse de l'IA
-        robotReply = {
+
+        // Variable pour stocker la réponse de l'IA
+        let robotReply = $state({
           role: result.choices[0].message.role,
-          content: result.choices[0].message.content,
-        };
+          content: result.choices[0].message.content
+        });
+
+        // Met à jour le tableau et afficher directment la réponse à l'utilisateur
+        savedTalk = [...savedTalk, robotReply];
 
         // Créer un enregistrement du message sur PocketBase avec le message de l'IA
-        createRecord(robotReply);
-
-        getMessages();
+        console.log("création reponse robot dans pocketbase");
+        await createRecord(robotReply);
 
         // Vide le textarea une fois la fonction appellée
         userTalk = "";
@@ -148,6 +144,7 @@
 
   // localStorage.clear()
 
+  // Appelle le tableau des messages depuis PocketBase à chaque réfraichissement de la page.
   onMount(async () => {
     await getMessages();
   });
@@ -174,7 +171,9 @@
         {#each savedTalk as talk}
           {#if talk.role === "user"}
             <div class="user-talk">
-              <Markdown md={talk.content} />
+              <Markdown
+                md={talk.content}
+              /><!--TODO: bug avec l'affichage de l'heure : lorsque le message s'affiche l'heure n'est pas dispo le temps que PocketBase soit contacté..-->
               <div class="user-talk__time">
                 {new Date(talk.created).toLocaleTimeString("fr-FR", {
                   hour: "2-digit",
@@ -350,7 +349,7 @@
       content: "";
       position: absolute;
       width: 100%;
-      height: 100px;
+      height: 2rem;
       top: 9.3rem;
       background-color: var(--main-color);
       z-index: -2;
@@ -389,7 +388,7 @@
       border-radius: 1rem;
       align-self: flex-end;
       &:active {
-        top:2px
+        top: 2px;
       }
       &::after {
         content: "";
@@ -424,7 +423,6 @@
       height: 100%;
       display: flex;
       flex-direction: row;
-      /* border: 4px solid green; */
     }
     main {
       width: 60%;
