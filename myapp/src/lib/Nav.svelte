@@ -53,6 +53,8 @@
     createRecordConv(newConversation);
     userConversation = "";
   }
+
+  // Si le tableau des conversations change, alors on appelle la fonction getConv pour récupérer toutes les conversations de PocketBase
   $effect(() => {
     if (savedConv) {
       getConv()
@@ -64,7 +66,7 @@
   });
 
 </script>
-<!-- Partie nav -->
+
 <nav class="menu">
   <div class="menu__add separate">
     <form onsubmit={initConversation}>
@@ -94,7 +96,7 @@
     {/each}
   </div>
 </nav>
-<!-- Fin de partie nav -->
+
 <style>
   .menu {
     display: flex;
