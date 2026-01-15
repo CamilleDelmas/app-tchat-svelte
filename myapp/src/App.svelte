@@ -1,17 +1,18 @@
 <script>
-  //TODO: probleme lorsque l'utilisateur de créé pas de conversation, prévoir le cas avec un message à l'utilisateur, ou attribuer automatiquement les messages à une nouvelle conv.
-
   // ========== IMPORTS ==========================================
-  import { onMount } from "svelte";
 
   import Markdown from "svelte-exmarkdown";
   import MobileNav from "./lib/MobileNav.svelte";
   import DesktopNav from "./lib/DesktopNav.svelte";
+  import { onMount } from "svelte";
 
   // On importe l'état partagé
   import { currentIdState } from "./lib/state.svelte";
 
   // ========== VARIABLES ========================================
+
+  // Variable liée à la valeur de l'input
+  let userToken = $state("");
 
   // Variable pour stocker la valeur de mon textarea
   let userTalk = $state("");
@@ -22,11 +23,7 @@
   // Variable pour connaitre la largeur de la fenêtre
   let innerWidth = $state(0);
 
-
   // ========== TOKEN ============================================
-
-  // Variable liée à la valeur de l'input
-  let userToken = $state("");
 
   // Fonction pour sauvegarder le token
   const saveToken = (event) => {
@@ -63,11 +60,17 @@
 
   // Fonction pour récupérer les informations de la base de donnée et les stocker dans le tableau des conversations
   const getMessages = async (id_conversation) => {
-    const response = await fetch(
-      `http://localhost:8090/api/collections/messages/records?filter=(conversation='${id_conversation}')`
-    );
-    const data = await response.json();
-    savedTalk = data.items;
+    try {
+      const response = await fetch(
+        `http://localhost:8090/api/collections/messages/records?filter=(conversation='${id_conversation}')`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        savedTalk = data.items;
+      }
+    } catch (error) {
+      console.error("getMessages error :", error);
+    }
   };
 
   // ========== API ==============================================
@@ -87,10 +90,9 @@
 
     if (userReply.content) {
       try {
-        console.log($state.snapshot(savedTalk));
         // Spread Operator (l'opérateur de décomposition) pour mettre à jour le tableau et afficher directment la question à l'utilisateur (expliqué par l'IA).
         savedTalk = [...savedTalk, userReply];
-        console.log($state.snapshot(savedTalk));
+
         // on formate les messages à envoyer à Mistral comme l'api les attend
         const formattedMessages = [];
         for (const message of savedTalk) {
@@ -99,10 +101,10 @@
             content: message.content,
           });
         }
-        console.log("création donnée question dans pocketbase");
-        // Créer un enregistrement du message sur PocketBase avec le message de l'user
-        createMessage(userReply);
-        console.log("Avant appel API Mistral");
+
+        // Créer un enregistrement du message de l'user sur PocketBase
+        await createMessage(userReply);
+
         // Envoi de la question à l'IA
         const response = await fetch(
           "https://api.mistral.ai/v1/chat/completions",
@@ -119,27 +121,29 @@
             }),
           }
         );
-        console.log("Après appel API Mistral", response);
-        // récupère la réponse
-        const result = await response.json();
-        // Stock la réponse de l'IA
+        if (response.ok) {
+          // récupère la réponse
+          const result = await response.json();
 
-        // Variable pour stocker la réponse de l'IA
-        let robotReply = $state({
-          role: result.choices[0].message.role,
-          content: result.choices[0].message.content,
-          conversation: currentIdState.value,
-        });
+          // Stock la réponse de l'IA
+          let robotReply = $state({
+            role: result.choices[0].message.role,
+            content: result.choices[0].message.content,
+            conversation: currentIdState.value,
+          });
 
-        // Met à jour le tableau et afficher directment la réponse à l'utilisateur
-        savedTalk = [...savedTalk, robotReply];
+          // Met à jour le tableau et afficher directment la réponse à l'utilisateur
+          savedTalk = [...savedTalk, robotReply];
 
-        // Créer un enregistrement du message sur PocketBase avec le message de l'IA
-        console.log("création reponse robot dans pocketbase");
-        await createMessage(robotReply);
+          // Créer un enregistrement du message sur PocketBase avec le message de l'IA
+          await createMessage(robotReply);
 
-        // Vide le textarea une fois la fonction appellée
-        userTalk = "";
+          //TODO: le textarea ne se vide pas directement après submit ...
+          // Vide le textarea une fois la fonction appellée
+          userTalk = "";
+        } else {
+          console.error("Erreur API");
+        }
       } catch (error) {
         console.log("Message d'erreur", error);
         alert("Impossible de communiquer");
@@ -151,18 +155,18 @@
 
   // A chaque changement de currentIdState.value, on appelle getMessages()
   $effect(() => {
+    console.log("currentIdState.value a changé:", currentIdState.value);
+
     if (currentIdState.value) {
-      getMessages(currentIdState.value)
+      getMessages(currentIdState.value);
     }
-  })
+  });
 
   // localStorage.clear()
 
-  // // Appelle le tableau des messages depuis PocketBase à chaque réfraichissement de la page.
-  // onMount(async () => {
-  //   await getMessages(currentIdState.value);
-  // });
-
+  onMount(async () => {
+    console.log("currentIdState.value au mount:", currentIdState.value);
+  });
 </script>
 
 <svelte:window bind:innerWidth />
@@ -181,8 +185,8 @@
         <div class="robot-talk">
           <h2>Bienvenue sur O'Chat !</h2>
           <p>
-            Crééz une nouvelle discussion ou choisissez en une existante pour commencer à discuter avec l'IA
-            Mistral !
+            Crééz une nouvelle discussion ou choisissez en une existante pour
+            commencer à discuter avec l'IA Mistral !
           </p>
         </div>
         <!-- Si une conversation est bien sélectionnée, on affiche -->
@@ -476,5 +480,4 @@
       min-height: 2rem;
     }
   }
-
 </style>

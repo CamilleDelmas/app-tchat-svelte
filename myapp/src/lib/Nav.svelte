@@ -28,43 +28,75 @@
     return await response.json();
   };
 
-    // Fonction pour récupérer les informations de la base de donnée et les stocker dans le tableau des conversations
+  // Fonction pour récupérer les informations de la base de donnée et les stocker dans le tableau des conversations
   const getConv = async () => {
-    const response = await fetch(
-      "http://localhost:8090/api/collections/conversations/records"
-    );
-    const data = await response.json();
-    savedConv = data.items;
+    try {
+      const response = await fetch(
+        "http://localhost:8090/api/collections/conversations/records"
+      );
+      if (response.ok) {
+        const data = await response.json();
+        savedConv = data.items;
+      } else {
+        console.error("Erreur de communication avec PocketBase");
+      }
+    } catch (error) {
+      console.error("getConv error :", error);
+    }
+  };
+
+  // Fonction pour supprimer une conversations dans PocketBase
+  const deleteConv = async (id) => {
+    try {
+      const response = await fetch(
+        `http://localhost:8090/api/collections/conversations/records/${id}`, {method: "DELETE",
+          headers: {'Content-Type': 'application/json'}
+        }
+      );
+      if (response.ok) {
+        console.log("suppression réussie")
+      } else {
+        console.error("Erreur de communication avec PocketBase");
+      }
+    } catch (error) {
+      console.error("deleteConv error :", error);
+    }
   };
 
   // ========== FONCTION CONV  =======================================
   // Fonction de création des conversation
+
+  // La fonction transmet l'id à la fonction de supression dans PocketBase, puis créé un nouveau tableau sans la conversation liée à  l'id.
+const deleteC = async(id) => {
+  await deleteConv(id);
+  savedConv = savedConv.filter(conv => conv.id !== id);
+}
+
   const initConversation = async (event) => {
     event.preventDefault();
 
     userConversation = userConversation.trim();
+    if (userConversation) {
+      try {
+        let newConversation = {
+          title: userConversation,
+        };
 
-    let newConversation = {
-      title: userConversation
+        await createRecordConv(newConversation);
+        await getConv();
+        userConversation = "";
+      } catch (error) {
+        console.error("initConversation error :", error);
+      }
+    } else {
+      alert("Veuillez rentrer un titre de discussion");
     }
-    // Met à jour le tableau et afficher directment la réponse à l'utilisateur
-        savedConv = [...savedConv, newConversation];
-    
-    createRecordConv(newConversation);
-    userConversation = "";
-  }
+  };
 
-  // Si le tableau des conversations change, alors on appelle la fonction getConv pour récupérer toutes les conversations de PocketBase
-  $effect(() => {
-    if (savedConv) {
-      getConv()
-    }
-  })
-    // Appelle le tableau des conversations depuis PocketBase à chaque réfraichissement de la page.
+  // Appelle le tableau des conversations depuis PocketBase à chaque réfraichissement de la page.
   onMount(async () => {
     await getConv();
   });
-
 </script>
 
 <nav class="menu">
@@ -88,8 +120,11 @@
     {#each savedConv as conv}
       <div class="talk">
         <!-- Au click, on passe la valeur de l'id de la dscussion à l'état -->
-        <button onclick={() => currentIdState.value = conv.id}>{conv.title}</button>
-        <button>
+        <button class="conv" onclick={() => (currentIdState.value = conv.id)}
+          >{conv.title}</button
+        >
+        <!-- Lorsque l'on clique sur la poubelle, on appelle la fonction avec en  argument l'id de la conv liée au bouton -->
+        <button onclick={() => deleteC(conv.id)}>
           <Trash2 size={24} strokeWidth={1.5} />
         </button>
       </div>
@@ -108,18 +143,32 @@
       flex-direction: row;
       align-items: center;
       gap: 1rem;
+      form {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 1rem;
+        border-radius: 2rem;
+      }
+      form:has(input:focus) {
+        background-color: var(--hilight-color);
+      }
       input {
         padding: 0.2rem;
         width: 80%;
         border: none;
         background-color: var(--dark-color);
         outline: none;
-        color: var(--neutral-color);
+        border-radius: inherit;
+        color: var(--dark-color);
         &::placeholder {
           color: var(--hilight-color);
         }
         &:focus {
-          border-right: 1px solid var(--neutral-color);
+          background-color: var(--hilight-color);
+        }
+        &:focus::placeholder {
+          color: var(--dark-color);
         }
       }
     }
@@ -147,13 +196,28 @@
       justify-content: flex-end;
       align-items: center;
       gap: 1rem;
-      p {
+      .conv {
+        position: relative;
         color: var(--neutral-color-color);
         text-align: left;
         background-color: var(--main-color);
-        min-width: 10rem;
+        width: 80%;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
         padding: 0.3rem 1rem;
         border-radius: 1rem;
+        &:active {
+          top: 2px;
+        }
+        &:hover {
+          background-color: var(--hilight-color);
+          color: var(--dark-color);
+        }
+        &:focus {
+          background-color: var(--hilight-color);
+          color: var(--dark-color);
+        }
       }
     }
   }
@@ -161,6 +225,7 @@
     background-color: var(--hilight-color);
     border-radius: 50%;
     border: none;
+    box-shadow: 2px 2px 10px var(--dark-color);
     &:hover {
       transform: scale(1.1);
     }
