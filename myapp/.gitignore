@@ -24,3 +24,14 @@ dist-ssr
 *.sw?
 
 /src/private.js
+
+# PocketBase
+myapp/pocketbase/pocketbase
+myapp/pocketbase/pocketbase.exe
+myapp/pocketbase/pocketbase_*
+
+# PocketBase data (données et logs)
+myapp/pocketbase/pb_data/
+
+# Mais on garde les migrations !
+!myapp/pocketbase/pb_migrations/
