@@ -104,7 +104,8 @@
 
         // Créer un enregistrement du message de l'user sur PocketBase
         await createMessage(userReply);
-
+        // Vide le textarea une fois la fonction appellée
+        userTalk = "";
         // Envoi de la question à l'IA
         const response = await fetch(
           "https://api.mistral.ai/v1/chat/completions",
@@ -138,9 +139,6 @@
           // Créer un enregistrement du message sur PocketBase avec le message de l'IA
           await createMessage(robotReply);
 
-          //TODO: le textarea ne se vide pas directement après submit ...
-          // Vide le textarea une fois la fonction appellée
-          userTalk = "";
         } else {
           console.error("Erreur API");
         }
